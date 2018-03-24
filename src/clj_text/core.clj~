@@ -1,0 +1,87 @@
+(ns clj-text.core
+  (:require [clojure.edn :as edn])
+  (:import (java.io StringReader)
+           (edu.stanford.nlp.process DocumentPreprocessor
+                                     PTBTokenizer
+                                     CoreLabelTokenFactory)
+           (edu.stanford.nlp.ling CoreLabel
+                                  TaggedWord
+                                  Word)
+           (edu.stanford.nlp.tagger.maxent MaxentTagger)
+           (edu.stanford.nlp.trees LabeledScoredTreeNode
+                                   LabeledScoredTreeReaderFactory
+                                   PennTreebankLanguagePack
+                                   TypedDependency
+                                   TreeCoreAnnotations$TreeAnnotation)
+           (edu.stanford.nlp.util PropertiesUtils)
+           (edu.stanford.nlp.parser.common ParserGrammar)
+           (edu.stanford.nlp.parser.lexparser LexicalizedParser)
+           (edu.stanford.nlp.pipeline Annotation
+                                      StanfordCoreNLP)
+           (edu.stanford.nlp.ling CoreAnnotations$SentencesAnnotation
+                                  CoreAnnotations$TextAnnotation
+                                  CoreAnnotations$NamedEntityTagAnnotation
+                                  CoreAnnotations$TokensAnnotation
+                                  CoreAnnotations$LemmaAnnotation
+                                  CoreAnnotations$PartOfSpeechAnnotation
+                                  CoreAnnotations$NamedEntityTagAnnotation
+                                  Word)
+           (java.util Properties)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; utilities
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- option-generator
+  [h]
+  (->> (map (fn [[k v]] (str k "=" v)) h)
+       (interpose ",")
+       (apply str)))
+
+(defn- parse-tree
+  [t]
+  (loop [[x & more :as tree] (edn/read-string t)
+         acc ()]
+    (println x more)
+    (cond
+      (symbol? x) (recur more (list (keyword x) acc))
+
+      (symbol? (second x)) (recur more (cons (list (keyword (first x)) (name (second x))) acc))
+      (coll? (second x)) (recur (cons (second x) more) (cons (keyword (first x)) acc))
+      :else acc)))
+
+;; "(ROOT (S (NP (NN jason)) (VP (VBD was) (ADVP (RB here)) (NP-TMP (NN yesterday)) (, ,) (S (VP (VBG organizing) (PP (IN in) (NP (NNP Australia)))))) (. .)))"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; api
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn annotate
+  ([text annotations] (annotate text annotations []))
+  ([text annotations options]
+   (let [args (concat ["annotators" (->> (map name annotations) (interpose ",") (apply str))] options)
+         a (Annotation. text)]
+     (.annotate (StanfordCoreNLP. (PropertiesUtils/asProperties (into-array args))) a)
+     a)))
+
+(defn token-annotations
+  [atext annotations]
+  (let [m {:token CoreAnnotations$TextAnnotation
+           :lemma CoreAnnotations$LemmaAnnotation
+           :ner CoreAnnotations$NamedEntityTagAnnotation
+           :text CoreAnnotations$TextAnnotation
+           :pos CoreAnnotations$PartOfSpeechAnnotation
+           :regexner CoreAnnotations$NamedEntityTagAnnotation
+           :tree TreeCoreAnnotations$TreeAnnotation}
+        a (select-keys m annotations)]
+    (map (fn [x] (merge (->> (map (fn [[k v]] {k (.get x v)}) a) (apply merge))
+                        {:begin (.beginPosition x) :end (.endPosition x)}))
+         (.get atext CoreAnnotations$TokensAnnotation))))
+
+(defn sentence-annotations
+  [atext annotations]
+  (let [m {:tree TreeCoreAnnotations$TreeAnnotation}
+        a (select-keys m annotations)]
+    (map (fn [x] (->> (map (fn [[k v]] {k (.get x v)}) a) (apply merge)))
+         (.get atext CoreAnnotations$SentencesAnnotation))))
+
