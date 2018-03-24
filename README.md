@@ -47,7 +47,8 @@ clj-text.core> (token-annotations a [:ner])
 ({:ner "PERSON", :begin 0, :end 5} {:ner "O", :begin 6, :end 9}
  {:ner "O", :begin 10, :end 14} {:ner "O", :begin 15, :end 19}
  {:ner "O", :begin 20, :end 24})
-clj-text.core> 
+clj-text.core>
+```
 
 ## License
 
