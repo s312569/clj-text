@@ -2,6 +2,12 @@
 
 A simple wrapper around Stanford CoreNLP.
 
+## Install
+
+Add the following to your project.clj:
+
+[org.clojars.s312569/clj-text "0.1.0"]
+
 ## Usage
 
 To create a CoreNLP pipeline use the `pipeline` function and the

@@ -1,4 +1,4 @@
-(defproject clj-text "0.1.0"
+(defproject org.clojars.s312569/clj-text "0.1.0"
   :description "A wrapper around Stanford CoreNLP"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
